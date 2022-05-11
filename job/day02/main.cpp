@@ -1,19 +1,20 @@
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <string>
-#include <stdexcept>
+#include <unistd.h>
 
 class IOException : public std::exception {
     int code_;
     std::string msg_;
+
 public:
-    IOException(const std::string &msg) : code_(errno), msg_(msg) { 
+    IOException(const std::string &msg) : code_(errno), msg_(msg) {
         msg_.append(": ");
         msg_.append(strerror(code_));
     }
@@ -21,7 +22,7 @@ public:
     int code() const noexcept {
         return code_;
     }
-    const char* what() const noexcept {
+    const char *what() const noexcept {
         return msg_.c_str();
     }
 };
@@ -31,16 +32,15 @@ class MappedBuffer {
     size_t map_len;
 
     MappedBuffer(char *map_addr, size_t map_len, char *data, size_t len)
-        : map_addr(map_addr), map_len(map_len), data(data), len(len) 
-    { }
+        : map_addr(map_addr), map_len(map_len), data(data), len(len) {}
 
-    MappedBuffer(const MappedBuffer&) = delete;
-    MappedBuffer& operator = (const MappedBuffer&) = delete;
+    MappedBuffer(const MappedBuffer &) = delete;
+    MappedBuffer &operator=(const MappedBuffer &) = delete;
 
 public:
     char *data;
     size_t len;
-    
+
     ~MappedBuffer() {
         ::munmap(map_addr, map_len);
     }
@@ -53,7 +53,7 @@ class File {
 
 public:
     File(const char *fname, int flags) {
-        if ((fd_ = open(fname, flags)) == -1) 
+        if ((fd_ = open(fname, flags)) == -1)
             throw IOException("Cannot open file", fname);
         if (fstat(fd_, &st_) != 0)
             throw IOException("fstat");
@@ -70,11 +70,11 @@ public:
         return fd_;
     }
 
-    struct stat& stat() { 
+    struct stat &stat() {
         return st_;
     }
 
-    size_t size() const noexcept { 
+    size_t size() const noexcept {
         return st_.st_size;
     }
 
@@ -83,12 +83,12 @@ public:
     }
 
     MappedBuffer map_readonly(off_t offset, size_t length) {
-        if (offset >= size()) 
+        if (offset >= size())
             throw std::invalid_argument("offset is past end of file");
 
         if (offset + length > size())
             length = size() - offset;
-        
+
         off_t page_offset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
         char *map_addr = (char *)::mmap(0, length + offset - page_offset, PROT_READ, MAP_PRIVATE, fd_, page_offset);
         if (map_addr == MAP_FAILED)
@@ -103,14 +103,13 @@ public:
         close();
     }
 
-    File(const File&) = delete;
-    File& operator = (const File&) = delete;
+    File(const File &) = delete;
+    File &operator=(const File &) = delete;
 };
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     try {
-        auto print_hex = [] (char *d, size_t sz) {
+        auto print_hex = [](char *d, size_t sz) {
             for (size_t i = 0; i < sz; ++i)
                 printf("%02X ", uint8_t(d[i]));
             printf("\n");
@@ -122,7 +121,7 @@ int main(int argc, char const *argv[])
         print_hex(buffer.data, 64);
         print_hex(buffer.data + buffer.len - 64, 64);
 
-    } catch(const std::exception& e) {
+    } catch (const std::exception &e) {
         fprintf(stderr, "exception: %s\n", e.what());
     }
     return 0;
