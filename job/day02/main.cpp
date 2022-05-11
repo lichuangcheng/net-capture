@@ -2,6 +2,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#include <memory>
 #include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,23 +29,52 @@ public:
 };
 
 class MappedBuffer {
-    char *map_addr;
-    size_t map_len;
-
-    MappedBuffer(char *map_addr, size_t map_len, char *data, size_t len)
-        : map_addr(map_addr), map_len(map_len), data(data), len(len) {}
-
-    MappedBuffer(const MappedBuffer &) = delete;
-    MappedBuffer &operator=(const MappedBuffer &) = delete;
-
 public:
-    char *data;
-    size_t len;
-
-    ~MappedBuffer() {
-        ::munmap(map_addr, map_len);
+    char *data() noexcept {
+        return d->data;
     }
+    const char *data() const noexcept {
+        return d->data;
+    }
+    char *begin() noexcept {
+        return d->data;
+    }
+    const char *begin() const noexcept {
+        return d->data;
+    }
+    char *end() {
+        return d->data + d->len;
+    }
+    const char *end() const noexcept {
+        return d->data + d->len;
+    }
+    size_t size() const noexcept {
+        return d->len;
+    }
+    char &operator[](size_t idx) noexcept {
+        return d->data[idx];
+    }
+    const char &operator[](size_t idx) const noexcept {
+        return d->data[idx];
+    }
+
+    MappedBuffer(MappedBuffer &&) = default;
+    MappedBuffer &operator=(MappedBuffer &&) = default;
+
     friend class File;
+
+private:
+    MappedBuffer(char *map_addr, size_t map_len, char *data, size_t len) : d{new Data_(map_addr, map_len, data, len)} {}
+
+    struct Data_ {
+        char *map_addr;
+        size_t map_len;
+        char *data;
+        size_t len;
+        Data_(char *maddr, size_t mlen, char *d, size_t sz) : map_addr(maddr), map_len(mlen), data(d), len(sz) {}
+        ~Data_() { ::munmap(map_addr, map_len); }
+    };
+    std::unique_ptr<Data_> d;
 };
 
 class File {
@@ -109,7 +139,7 @@ public:
 
 int main(int argc, char const *argv[]) {
     try {
-        auto print_hex = [](char *d, size_t sz) {
+        auto print_hex = [](const char *d, size_t sz) {
             for (size_t i = 0; i < sz; ++i)
                 printf("%02X ", uint8_t(d[i]));
             printf("\n");
@@ -118,8 +148,8 @@ int main(int argc, char const *argv[]) {
         File f("f8cab909-04f5-497a-ac0f-402c62268360.png", O_RDONLY);
         auto buffer = f.map_readonly();
 
-        print_hex(buffer.data, 64);
-        print_hex(buffer.data + buffer.len - 64, 64);
+        print_hex(buffer.data(), 64);
+        print_hex(buffer.data() + buffer.size() - 64, 64);
 
     } catch (const std::exception &e) {
         fprintf(stderr, "exception: %s\n", e.what());
