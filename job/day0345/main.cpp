@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/mman.h>
@@ -15,15 +16,10 @@
 #include <vector>
 #include <span>
 
-template <typename... T>
-inline void println(std::string_view fmt, T&&... args) {
+template <typename... T> 
+inline void println(std::string_view fmt, T &&...args) {
     fmt::print(fmt, std::forward<T>(args)...);
     fmt::print("\n");
-}
-
-template <typename T>
-inline void println(const T& args) {
-    fmt::print("{}\n", args);
 }
 
 class IOException : public std::exception {
@@ -114,7 +110,7 @@ public:
         }
     }
 
-    int fd() const noexcept {
+    int fileno() const noexcept {
         return fd_;
     }
 
