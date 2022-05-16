@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/mman.h>
@@ -13,8 +12,10 @@
 
 #include <fmt/format.h>
 #include <fmt/chrono.h>
+#include <fmt/ranges.h>
 #include <vector>
 #include <span>
+#include <map>
 
 template <typename... T> 
 inline void println(std::string_view fmt, T &&...args) {
@@ -180,22 +181,22 @@ struct PacketHeader {
 static_assert(sizeof(PacketHeader) == 16);
 
 struct Packet {
-    uint32_t second;
-    uint32_t microsecond;
+    uint32_t ts_sec;
+    uint32_t ts_usec;
     uint32_t caplen;
     uint32_t len;
     byte *data;
 
     Packet(const PacketHeader &head, byte *d) : data(d) {
-        second = head.second;
-        microsecond = head.microsecond;
+        ts_sec = head.second;
+        ts_usec = head.microsecond;
         caplen = head.caplen;
         len = head.len;
     }
 
     void byteswap(bool swap) {
-        second = swap ? ntohl(second) : second;
-        microsecond = swap ? ntohl(microsecond) : microsecond;
+        ts_sec = swap ? ntohl(ts_sec) : ts_sec;
+        ts_usec = swap ? ntohl(ts_usec) : ts_usec;
         caplen = swap ? ntohl(caplen) : caplen;
         len = swap ? ntohl(len) : len;
     }
@@ -280,9 +281,28 @@ int main(int argc, char const *argv[]) {
             return 1;
         }
 
+        std::map<uint16_t, std::string> type_str{
+            {0x0800, "IPv4"},
+            {0x0806, "ARP"},
+            {0x0835, "RARP"},
+            {0x86DD, "IPv6"},
+        };
+        constexpr int ETH_ALEN = 6;
+
         println("总计{}个数据包", reader.packet_size());
         for (auto &packet : reader.packet_list()) {
-            println("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes", fmt::localtime(packet.second), packet.microsecond, packet.caplen);
+
+            std::span<uint8_t, ETH_ALEN> dmac((uint8_t *)packet.data, ETH_ALEN); 
+            std::span<uint8_t, ETH_ALEN> smac((uint8_t *)packet.data + ETH_ALEN, ETH_ALEN);
+            uint16_t ether_type = ntohs(*(uint16_t *)(packet.data + ETH_ALEN * 2));
+
+            println("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes {:02X} {:02X} {}", 
+                    fmt::localtime(packet.ts_sec),
+                    packet.ts_usec, 
+                    packet.caplen,
+                    fmt::join(dmac, "-"), 
+                    fmt::join(smac, "-"), 
+                    type_str[ether_type]);
         } 
 
     } catch (const std::exception &e) {
