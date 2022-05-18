@@ -15,7 +15,8 @@
 #include <fmt/ranges.h>
 #include <vector>
 #include <span>
-#include <map>
+#include <array>
+#include "protocol_type.h"
 
 template <typename... T> 
 inline void println(std::string_view fmt, T &&...args) {
@@ -41,7 +42,7 @@ public:
     }
 };
 
-using byte = std::byte;
+using byte = uint8_t;
 
 class MappedBuffer {
 public:
@@ -266,6 +267,121 @@ private:
     std::vector<Packet> packet_list_;
 };
 
+struct EthernetII {
+    constexpr static int ETH_ALEN = 6;
+    
+    std::span<uint8_t, ETH_ALEN> dmac;
+    std::span<uint8_t, ETH_ALEN> smac;
+    uint16_t type;
+    std::span<uint8_t> playload;
+
+    EthernetII(std::span<uint8_t> packet) 
+        : dmac(packet.subspan(0, ETH_ALEN))
+        , smac(packet.subspan(ETH_ALEN, ETH_ALEN * 2)) 
+        , type(ntohs(*(uint16_t *)(packet.data() + ETH_ALEN * 2)))
+        , playload(packet.subspan(ETH_ALEN * 2 + 2)) {}
+
+    const char* type_string() const {
+        switch (type)
+        {
+        case 0x0800: return "IPv4";
+        case 0x0806: return "ARP";
+        case 0x0835: return "RARP";
+        case 0x86DD: return "IPv6";
+        default:     return "";
+        }
+    }
+};
+
+struct AddrIPv4 : in_addr {
+    std::string to_string() const {
+        const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&s_addr);
+        return fmt::format("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]);
+    }
+};
+
+class IPv4Frame {
+public:
+    bool deserialize(std::span<uint8_t> data) {
+        // 4 byte
+        version_         = (data[0] >> 4) & 0xf;
+        header_len_      = (data[0] & 0xf) * 4;
+        service_type_    = data[1];
+        total_len_       = ntohs(*(uint16_t *)(&data[2]));
+        // 4 bytes
+        identification_  = ntohs(*(uint16_t *)(&data[4]));
+        flags_           = (data[6] >> 5) & 0b00000111;
+        fragment_offset_ = ntohs(*(uint16_t *)(&data[6])) & 0x1fff;
+        // 4 bytes
+        ttl_             = data[8];
+        protocol_        = (ProtocolType)data[9];
+        header_checksum_ = ntohs(*(uint16_t *)(&data[10]));
+        // 4 bytes
+        s_addr_.s_addr   = *(uint32_t *)(&data[12]);
+        d_addr_.s_addr   = *(uint32_t *)(&data[16]);
+
+        // Options Padding ...
+
+        playload_ = data.subspan(header_len_, total_len_ - header_len_);
+        return true;
+    }
+
+    uint8_t header_lenght() const noexcept {
+        return header_len_;
+    }
+
+    AddrIPv4 s_addr() const {
+        return s_addr_;
+    }
+
+    AddrIPv4 d_addr() const {
+        return d_addr_;
+    }
+
+    uint16_t total_length() const {
+        return total_len_;
+    }
+
+    uint8_t TTL() const {
+        return ttl_;
+    }
+
+    ProtocolType protocol() const {
+        return protocol_;
+    }
+
+    bool dont_fragment() const noexcept {
+        return flags_ & 0b0000'0010;
+    }
+
+    bool more_fragment() const noexcept {
+        return flags_ & 0b0000'0001;
+    }
+
+    std::span<uint8_t> playload() const {
+        return playload_;
+    }
+
+private:
+    uint8_t version_{0};
+    uint8_t header_len_{0};
+    uint8_t service_type_{0};
+
+    uint16_t total_len_{0};
+    uint16_t identification_{0};
+
+    uint8_t flags_{0};
+    uint16_t fragment_offset_{0};
+    uint8_t ttl_{0};
+    ProtocolType protocol_{0};
+    uint16_t header_checksum_{0};
+
+    AddrIPv4 s_addr_;
+    AddrIPv4 d_addr_;
+
+    std::span<uint8_t> playload_;
+};
+
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
         println("Usage: {} <.pcap>", argv[0]);
@@ -281,28 +397,28 @@ int main(int argc, char const *argv[]) {
             return 1;
         }
 
-        std::map<uint16_t, std::string> type_str{
-            {0x0800, "IPv4"},
-            {0x0806, "ARP"},
-            {0x0835, "RARP"},
-            {0x86DD, "IPv6"},
-        };
-        constexpr int ETH_ALEN = 6;
-
         println("总计{}个数据包", reader.packet_size());
         for (auto &packet : reader.packet_list()) {
 
-            std::span<uint8_t, ETH_ALEN> dmac((uint8_t *)packet.data, ETH_ALEN); 
-            std::span<uint8_t, ETH_ALEN> smac((uint8_t *)packet.data + ETH_ALEN, ETH_ALEN);
-            uint16_t ether_type = ntohs(*(uint16_t *)(packet.data + ETH_ALEN * 2));
-
-            println("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes {:02X} {:02X} {}", 
+            EthernetII ether({packet.data, packet.caplen});
+            
+            fmt::print("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes {:02X} {:02X} {}", 
                     fmt::localtime(packet.ts_sec),
                     packet.ts_usec, 
                     packet.caplen,
-                    fmt::join(dmac, "-"), 
-                    fmt::join(smac, "-"), 
-                    type_str[ether_type]);
+                    fmt::join(ether.dmac, ":"),
+                    fmt::join(ether.smac, ":"),
+                    ether.type_string());
+
+            if (ether.type == 0x0800) {
+                IPv4Frame ipv4_f;
+                ipv4_f.deserialize(ether.playload);
+                fmt::print(" s_addr: {}, d_addr: {}, protocol: {}", 
+                            ipv4_f.s_addr().to_string(), 
+                            ipv4_f.d_addr().to_string(),
+                            to_string(ipv4_f.protocol()));
+            }
+            println("");
         } 
 
     } catch (const std::exception &e) {
