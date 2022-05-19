@@ -300,86 +300,59 @@ struct AddrIPv4 : in_addr {
     }
 };
 
-class IPv4Frame {
+struct IPv4Frame {
 public:
     bool deserialize(std::span<uint8_t> data) {
         // 4 byte
-        version_         = (data[0] >> 4) & 0xf;
-        header_len_      = (data[0] & 0xf) * 4;
-        service_type_    = data[1];
-        total_len_       = ntohs(*(uint16_t *)(&data[2]));
+        version         = (data[0] >> 4) & 0xf;
+        header_len      = (data[0] & 0xf) * 4;
+        service_type    = data[1];
+        total_lenght    = ntohs(*(uint16_t *)(&data[2]));
         // 4 bytes
-        identification_  = ntohs(*(uint16_t *)(&data[4]));
-        flags_           = (data[6] >> 5) & 0b00000111;
-        fragment_offset_ = ntohs(*(uint16_t *)(&data[6])) & 0x1fff;
+        identification  = ntohs(*(uint16_t *)(&data[4]));
+        flags           = (data[6] >> 5) & 0b00000111;
+        fragment_offset = ntohs(*(uint16_t *)(&data[6])) & 0x1fff;
         // 4 bytes
-        ttl_             = data[8];
-        protocol_        = (ProtocolType)data[9];
-        header_checksum_ = ntohs(*(uint16_t *)(&data[10]));
+        ttl             = data[8];
+        protocol        = (ProtocolType)data[9];
+        header_checksum = ntohs(*(uint16_t *)(&data[10]));
         // 4 bytes
-        s_addr_.s_addr   = *(uint32_t *)(&data[12]);
-        d_addr_.s_addr   = *(uint32_t *)(&data[16]);
+        s_addr.s_addr   = *(uint32_t *)(&data[12]);
+        d_addr.s_addr   = *(uint32_t *)(&data[16]);
 
         // Options Padding ...
 
-        playload_ = data.subspan(header_len_, total_len_ - header_len_);
+        playload  = data.subspan(header_len, total_lenght - header_len);
+        self_data = data;
         return true;
     }
 
-    uint8_t header_lenght() const noexcept {
-        return header_len_;
-    }
-
-    AddrIPv4 s_addr() const {
-        return s_addr_;
-    }
-
-    AddrIPv4 d_addr() const {
-        return d_addr_;
-    }
-
-    uint16_t total_length() const {
-        return total_len_;
-    }
-
-    uint8_t TTL() const {
-        return ttl_;
-    }
-
-    ProtocolType protocol() const {
-        return protocol_;
-    }
-
     bool dont_fragment() const noexcept {
-        return flags_ & 0b0000'0010;
+        return flags & 0b0000'0010;
     }
 
     bool more_fragment() const noexcept {
-        return flags_ & 0b0000'0001;
+        return flags & 0b0000'0001;
     }
 
-    std::span<uint8_t> playload() const {
-        return playload_;
-    }
+    uint8_t version{0};
+    uint8_t header_len{0};
+    uint8_t service_type{0};
 
-private:
-    uint8_t version_{0};
-    uint8_t header_len_{0};
-    uint8_t service_type_{0};
+    uint16_t total_lenght{0};
+    uint16_t identification{0};
 
-    uint16_t total_len_{0};
-    uint16_t identification_{0};
+    uint8_t flags{0};
+    uint16_t fragment_offset{0};
+    uint8_t ttl{0};
+    ProtocolType protocol{0};
+    uint16_t header_checksum{0};
 
-    uint8_t flags_{0};
-    uint16_t fragment_offset_{0};
-    uint8_t ttl_{0};
-    ProtocolType protocol_{0};
-    uint16_t header_checksum_{0};
+    AddrIPv4 s_addr;
+    AddrIPv4 d_addr;
 
-    AddrIPv4 s_addr_;
-    AddrIPv4 d_addr_;
-
-    std::span<uint8_t> playload_;
+    std::span<uint8_t> playload;
+    std::span<uint8_t> self_data;
 };
 
 int main(int argc, char const *argv[]) {
@@ -413,10 +386,11 @@ int main(int argc, char const *argv[]) {
             if (ether.type == 0x0800) {
                 IPv4Frame ipv4_f;
                 ipv4_f.deserialize(ether.playload);
-                fmt::print(" s_addr: {}, d_addr: {}, protocol: {}", 
-                            ipv4_f.s_addr().to_string(), 
-                            ipv4_f.d_addr().to_string(),
-                            to_string(ipv4_f.protocol()));
+                fmt::print(" {} {} TTL: {} protocol: {}", 
+                            ipv4_f.s_addr.to_string(), 
+                            ipv4_f.d_addr.to_string(),
+                            ipv4_f.ttl,
+                            to_string(ipv4_f.protocol));
             }
             println("");
         } 
