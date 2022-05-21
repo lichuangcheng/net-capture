@@ -4,10 +4,12 @@
 #include <netcap/ethernetII_view.h>
 #include <netcap/ipv4_packet_view.h>
 #include <netcap/arp_packet_view.h>
+
+#include <map>
 #include <concepts>
 
 template <std::integral T>
-bool is_null(std::span<T> sp) {
+bool is_zero(std::span<T> sp) {
     return std::all_of(sp.begin(), sp.end(), [](T i) { return i == 0; });
 }
 
@@ -26,28 +28,28 @@ int main(int argc, char const *argv[]) {
             return 1;
         }
 
-        println("总计{}个数据包", reader.packet_size());
-        int i = 0;
+        std::map<AddrIPv4, std::span<uint8_t>> arp_map;
         for (auto &packet : reader.packet_list()) {
-            i++;
             EthernetIIView ether({packet.data, packet.caplen});
             if (ether.is_arp()) {
-                println("Frame: {}", i);
-                println("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes {:02X} {:02X} {}", 
-                        fmt::localtime(packet.ts_sec),
-                        packet.ts_usec, 
-                        packet.caplen,
-                        fmt::join(ether.dmac(), ":"),
-                        fmt::join(ether.smac(), ":"),
-                        ether.type_string());
-
                 ArpPacketView arp(ether.playload());
-                println("[ARP请求] {}({:02X}) 查询 {}({:02X}) 的 MAC 地址",
-                        arp.sender_ip().to_string(), fmt::join(arp.sender_mac(), ":"), 
-                        arp.target_ip().to_string(), fmt::join(arp.target_mac(), ":")
-                );
+                auto sender_ip = arp.sender_ip().to_string();
+                auto target_ip = arp.target_ip().to_string();
+
+                if (is_zero(arp.target_mac())) {
+                    println("[ARP请求] {}({:02X}) 查询 {} 的 MAC 地址", sender_ip, fmt::join(arp.sender_mac(), ":"), target_ip);
+                } else {
+                    println("[ARP响应] {}({:02X}) 回复 {}({:02X}): {} 的MAC地址在我这里",
+                            sender_ip, fmt::join(arp.sender_mac(), ":"),
+                            target_ip, fmt::join(arp.target_mac(), ":"), sender_ip);
+                }
+                arp_map.emplace(arp.sender_ip(), arp.sender_mac());
             }
-        } 
+        }
+        println("- IP地址  MAC地址");
+        for (auto &[ip, mac] : arp_map) {
+            println("- {} {:02X}", ip.to_string(), fmt::join(mac, ":"));
+        }
 
     } catch (const std::exception &e) {
         println("exception: {}", e.what());

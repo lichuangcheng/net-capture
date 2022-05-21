@@ -5,7 +5,6 @@
 #include <netcap/exception.h>
 #include <netcap/addr_ipv4.h>
 #include <netcap/byte.h>
-#include <netinet/in.h>
 
 class ArpPacketView {
 public:
@@ -15,11 +14,11 @@ public:
     }
 
     uint16_t hardware_type() const noexcept {
-        return ntohs(*(uint16_t *)(&d[0]));
+        return as_host<uint16_t>(&d[0]);
     }
 
     uint16_t protocol_type() const noexcept {
-        return ntohs(*(uint16_t *)(&d[2]));
+        return as_host<uint16_t>(&d[2]);
     }
 
     uint8_t hardware_len() const noexcept {
@@ -31,7 +30,7 @@ public:
     }
 
     uint16_t op() const noexcept {
-        return ntohs(*(uint16_t *)(&d[6]));
+        return as_host<uint16_t>(&d[6]);
     }
 
     std::span<uint8_t> sender_mac() const noexcept {
@@ -39,7 +38,7 @@ public:
     }
 
     AddrIPv4 sender_ip() const noexcept {
-        return AddrIPv4{*(uint32_t *)(&d[14])};
+        return AddrIPv4{as<uint32_t>(&d[14])};
     }
 
     std::span<uint8_t> target_mac() const noexcept {
@@ -47,7 +46,7 @@ public:
     }
 
     AddrIPv4 target_ip() const noexcept {
-        return AddrIPv4{*(uint32_t *)(&d[24])};
+        return AddrIPv4{as<uint32_t>(&d[24])};
     }
 
 private:
