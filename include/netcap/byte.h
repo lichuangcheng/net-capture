@@ -15,7 +15,7 @@ uint16_t byteswap(uint16_t x) {
 }
 
 uint32_t byteswap(uint32_t x) {
-    return ((x >> 24) & 0xff) | ((x >> 8) & 0xff00) | ((x << 8) & 0xff0000) | ((x << 24) & 0xff00000u);
+    return ((x >> 24) & 0xff) | ((x >> 8) & 0xff00) | ((x << 8) & 0xff0000) | ((x << 24) & 0xff000000);
 }
 
 template <std::integral T>
@@ -26,7 +26,7 @@ inline auto to_host(T x) -> T {
 
 template <std::integral T>
 inline auto as(const void *d) -> T {
-    return (*reinterpret_cast<const T *>(d));
+    return *reinterpret_cast<const T *>(d);
 }
 
 template <std::integral T>
