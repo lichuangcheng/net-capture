@@ -25,11 +25,11 @@ public:
     }
 
     uint16_t total_lenght() const noexcept {
-        return ntohs(*(uint16_t *)(&data[2]));
+        return as_host<uint16_t>(&data[2]);
     }
 
     uint16_t identification() const noexcept {
-        return ntohs(*(uint16_t *)(&data[4]));
+        return as_host<uint16_t>(&data[4]);
     }
 
     uint8_t flags() const noexcept {
@@ -37,7 +37,7 @@ public:
     }
 
     uint16_t fragment_offset() const noexcept {
-        return ntohs(*(uint16_t *)(&data[6])) & 0x1fff;
+        return as_host<uint16_t>(&data[6]) & 0x1fff;
     }
 
     bool dont_fragment() const noexcept {
@@ -57,15 +57,15 @@ public:
     }
 
     uint16_t header_checksum() const {
-        return ntohs(*(uint16_t *)(&data[10]));
+        return as_host<uint16_t>(&data[10]);
     }
 
-    AddrIPv4 s_addr() const noexcept {
-        return AddrIPv4{*(uint32_t *)(&data[12])};
+    AddrIPv4 sender_ip() const noexcept {
+        return AddrIPv4{as<uint32_t>(&data[12])};
     }
 
-    AddrIPv4 d_addr() const noexcept {
-        return AddrIPv4{*(uint32_t *)(&data[16])};
+    AddrIPv4 target_ip() const noexcept {
+        return AddrIPv4{as<uint32_t>(&data[16])};
     }
 
     std::span<uint8_t> playload() const noexcept {
