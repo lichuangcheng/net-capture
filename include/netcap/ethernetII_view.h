@@ -7,7 +7,9 @@
 
 class EthernetIIView {
 public:
-    constexpr static int ETH_ALEN{6};
+    enum { 
+        ETH_ALEN = 6 
+    };
 
     EthernetIIView(std::span<uint8_t> packet) : pack(packet) {}
 
