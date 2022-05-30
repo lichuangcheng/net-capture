@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-# set(CMAKE_TOOLCHAIN_FILE "/home/lighthouse/sources/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "/home/lighthouse/sources/vcpkg/scripts/buildsystems/vcpkg.cmake")
 project(net-capture)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -21,3 +21,4 @@ target_compile_options(netcap INTERFACE -Wall -Wextra -pedantic)
 target_link_libraries(netcap INTERFACE fmt::fmt)
 
 add_subdirectory(job)
+add_subdirectory(src)
