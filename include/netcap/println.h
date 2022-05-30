@@ -4,9 +4,11 @@
 #include <fmt/format.h>
 #include <fmt/chrono.h>
 #include <fmt/ranges.h>
+#include <fmt/ostream.h>
+#include <fmt/os.h>
 
 template <typename... T> 
-inline void println(std::string_view fmt, T &&...args) {
+inline void println(fmt::format_string<T...> fmt, T &&...args) {
     fmt::print(fmt, std::forward<T>(args)...);
     fmt::print("\n");
 }
