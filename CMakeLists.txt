@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.20)
-set(CMAKE_TOOLCHAIN_FILE "/home/lighthouse/sources/vcpkg/scripts/buildsystems/vcpkg.cmake")
 project(net-capture)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -13,7 +12,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
-find_package(fmt REQUIRED)
+find_package(fmt 8 REQUIRED)
 
 add_library(netcap INTERFACE)
 target_include_directories(netcap INTERFACE include)
