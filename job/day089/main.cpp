@@ -37,7 +37,8 @@ int main(int argc, char const *argv[]) {
                 auto target_ip = arp.target_ip().to_string();
 
                 if (is_zero(arp.target_mac())) {
-                    println("[ARP请求] {}({:02X}) 查询 {} 的 MAC 地址", sender_ip, fmt::join(arp.sender_mac(), ":"), target_ip);
+                    println("[ARP请求] {}({:02X}) 查询 {} 的 MAC 地址", 
+                            sender_ip, fmt::join(arp.sender_mac(), ":"), target_ip);
                 } else {
                     println("[ARP响应] {}({:02X}) 回复 {}({:02X}): {} 的MAC地址在我这里",
                             sender_ip, fmt::join(arp.sender_mac(), ":"),

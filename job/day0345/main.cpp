@@ -180,22 +180,22 @@ struct PacketHeader {
 static_assert(sizeof(PacketHeader) == 16);
 
 struct Packet {
-    uint32_t second;
-    uint32_t microsecond;
+    uint32_t ts_sec;
+    uint32_t ts_usec;
     uint32_t caplen;
     uint32_t len;
     byte *data;
 
     Packet(const PacketHeader &head, byte *d) : data(d) {
-        second = head.second;
-        microsecond = head.microsecond;
+        ts_sec = head.second;
+        ts_usec = head.microsecond;
         caplen = head.caplen;
         len = head.len;
     }
 
     void byteswap(bool swap) {
-        second = swap ? ntohl(second) : second;
-        microsecond = swap ? ntohl(microsecond) : microsecond;
+        ts_sec = swap ? ntohl(ts_sec) : ts_sec;
+        ts_usec = swap ? ntohl(ts_usec) : ts_usec;
         caplen = swap ? ntohl(caplen) : caplen;
         len = swap ? ntohl(len) : len;
     }
@@ -282,7 +282,7 @@ int main(int argc, char const *argv[]) {
 
         println("总计{}个数据包", reader.packet_size());
         for (auto &packet : reader.packet_list()) {
-            println("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes", fmt::localtime(packet.second), packet.microsecond, packet.caplen);
+            println("[{:%Y-%m-%d %H:%M:%S}.{}] {} Bytes", fmt::localtime(packet.ts_sec), packet.ts_usec, packet.caplen);
         } 
 
     } catch (const std::exception &e) {
