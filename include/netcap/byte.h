@@ -20,7 +20,7 @@ inline uint32_t byteswap(uint32_t x) {
 
 template <std::integral T>
 inline auto to_host(T x) -> T {
-    if (is_big_end) return x;
+    if constexpr (is_big_end) return x;
     return byteswap(x);
 }
 
