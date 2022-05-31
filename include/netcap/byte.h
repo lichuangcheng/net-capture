@@ -10,11 +10,15 @@ using byte = uint8_t;
 inline constexpr bool is_little_end = std::endian::native == std::endian::little;
 inline constexpr bool is_big_end = std::endian::native == std::endian::big;
 
-inline uint16_t byteswap(uint16_t x) {
+inline constexpr uint8_t byteswap(uint8_t x) {
+    return x;
+}
+
+inline constexpr uint16_t byteswap(uint16_t x) {
     return ((x & 0xff) << 8) | ((x & 0xff00) >> 8);
 }
 
-inline uint32_t byteswap(uint32_t x) {
+inline constexpr uint32_t byteswap(uint32_t x) {
     return ((x >> 24) & 0xff) | ((x >> 8) & 0xff00) | ((x << 8) & 0xff0000) | ((x << 24) & 0xff000000);
 }
 
