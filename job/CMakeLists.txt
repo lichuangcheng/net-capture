@@ -12,3 +12,4 @@ target_link_libraries(d12 netcap)
 
 add_executable(mid "mid/main.cpp")
 target_link_libraries(mid netcap)
+# target_link_options(mid PRIVATE -static-libstdc++ -static-libgcc)

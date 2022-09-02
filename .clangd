@@ -1,0 +1,13 @@
+CompileFlags:                    
+  Add: [-xc++, -Wall,-Wextra, -pedantic, -std=gnu++20, -fmodules-ts, -I include/]
+  Remove: 
+  Compiler: g++
+
+InlayHints:
+  Enabled: Yes
+  ParameterNames: No
+  DeducedTypes: No
+
+If:                               # Apply this config conditionally
+  PathMatch: include/*                # to all headers...
+  PathExclude: include/llvm-c/.*  # except those under include/llvm-c/
